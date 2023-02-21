@@ -31,7 +31,8 @@ const server = http.createServer((req, res) => {
         items.push({ id: ++lastindex, title, tasks: [] });
         // console.log(items);
 
-        fs.writeFile("data.json", items, (err) => {
+        const jsonitems = JSON.stringify(items, null, 2);
+        fs.writeFile("data.json", jsonitems, (err) => {
           //   console.log(items);
           if (err) {
             const message = { message: "could not persist data!" };
@@ -39,8 +40,8 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify(message, null, 2));
           } else {
             res.writeHead(200, { "Content-Type": "application/json" });
-            console.log(JSON.stringify(items, null, 2));
-            res.end(JSON.stringify(items, null, 2));
+            // console.log(JSON.stringify(items, null, 2));
+            res.end(jsonitems);
           }
         });
       } else {
