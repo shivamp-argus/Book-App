@@ -1,6 +1,7 @@
 const http = require("node:http");
 const url = require("url");
 const fs = require("fs");
+const querystring = require("querystring");
 // const ejs = require("ejs");
 
 // fs.readFileSync("data.json", (err, data) => {
@@ -10,13 +11,14 @@ const fs = require("fs");
 // });
 const data = fs.readFileSync("data.json");
 let items = JSON.parse(data);
-let lastindex = items.length === 0 ? 0 : items[items.length1].id;
+
+// console.log(items[items.length - 1].id);
+let lastindex = items.length === 0 ? 0 : items[items.length - 1].id;
 
 const server = http.createServer((req, res) => {
-  const reqUrl = url.parse(req.url).pathname;
+  const urlParse = url.parse(req.url);
+  const reqUrl = urlParse.pathname;
   if (reqUrl == "/" && req.method == "GET") {
-    // res.write("Hello");
-    // res.end();
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(items, null, 2));
   } else if (reqUrl == "/items" && req.method == "POST") {
@@ -51,6 +53,122 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify(message, null, 2));
       }
     });
+  } else if (reqUrl == "/items/tasks" && req.method == "POST") {
+    req.on("data", (data) => {
+      const search = urlParse.search;
+      // console.log(urlParse);
+      if (search) {
+        const [, query] = urlParse.search.split("?");
+        // console.log(query);
+        const id = querystring.parse(query).id;
+        if (id) {
+          const jsondata = JSON.parse(data);
+          const task = jsondata.task;
+          // console.log(task);
+
+          if (!task) {
+            const message = { message: "no task found in body request!" };
+
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(message, null, 2));
+          } else {
+            items.forEach((item, index) => {
+              if (item.id == id) {
+                items[index].tasks.push(task);
+              }
+            });
+            const jsonitems = JSON.stringify(items, null, 2);
+            fs.writeFile("./data.json", jsonitems, (err) => {
+              if (err) {
+                const message = { message: "could not persist data!" };
+                res.writeHead(500, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(message, null, 2));
+              } else {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(jsonitems);
+              }
+            });
+          }
+        } else {
+          const message = { message: "no id parameter!" };
+
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(message, null, 2));
+        }
+      } else {
+        const message = { message: "no query parameter!" };
+
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(message, null, 2));
+      }
+    });
+  } else if (reqUrl == "/items" && req.method == "PUT") {
+    req.on("data", (data) => {
+      const search = urlParse.search;
+      if (search) {
+        const [, query] = urlParse.search.split("?");
+        const id = querystring.parse(query).id;
+        if (id) {
+          const jsondata = JSON.parse(data);
+          const title = jsondata.title;
+
+          if (!title) {
+            const message = { message: "no title found in body request!" };
+
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(message, null, 2));
+          } else {
+            items.forEach((item, index) => {
+              if (item.id == id) {
+                items[index].title = title;
+              }
+            });
+            const jsonitems = JSON.stringify(items, null, 2);
+            fs.writeFile("./data.json", jsonitems, (err) => {
+              if (err) {
+                const message = { message: "could not persist data!" };
+                res.writeHead(500, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(message, null, 2));
+              } else {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(jsonitems);
+              }
+            });
+          }
+        } else {
+          const message = { message: "no id parameter!" };
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(message, null, 2));
+        }
+      } else {
+        const message = { message: "no query parameter!" };
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(message, null, 2));
+      }
+    });
+  } else if (reqUrl == "/items" && req.method == "DELETE") {
+    const search = urlParse.search;
+    if (search) {
+      const [, query] = urlParse.search.split("?");
+      const data = querystring.parse(query);
+
+      items = items.filter((item) => item.id != data.id);
+      const jsonitems = JSON.stringify(items, null, 2);
+      fs.writeFile("./data.json", jsonitems, (err) => {
+        if (err) {
+          const message = { message: "could not persist data!" };
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(message, null, 2));
+        } else {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(jsonitems);
+        }
+      });
+    } else {
+      const message = { message: "no query parameter!" };
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(message, null, 2));
+    }
   }
 });
 
